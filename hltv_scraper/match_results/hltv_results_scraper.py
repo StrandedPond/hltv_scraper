@@ -15,6 +15,7 @@ class AutoHealingSession:
     """A wrapper that automatically restarts the browser if Playwright/Cloudflare crashes it."""
     def __init__(self):
         self.session = StealthySession(headless=True, solve_cloudflare=True)
+        self.session.__enter__()
 
     def fetch(self, url):
         try:
@@ -23,8 +24,19 @@ class AutoHealingSession:
             print(f"\n⚠️ Browser crashed or closed: {e}")
             print("🔄 Auto-healing: Starting a fresh stealth browser session...")
             time.sleep(2)
+            try:
+                self.session.__exit__(None, None, None)
+            except:
+                pass
             self.session = StealthySession(headless=True, solve_cloudflare=True)
+            self.session.__enter__()
             return self.session.fetch(url)
+            
+    def close(self):
+        try:
+            self.session.__exit__(None, None, None)
+        except:
+            pass
 
 def clean_text(text):
     if not text: return ""
@@ -268,6 +280,9 @@ def scrape_hltv_results():
     print(f"\n✅ Scraping completed!")
     print(f"Saved Match data to {match_csv}")
     print(f"Saved Player data to {player_csv}")
+
+    # Clean up the stealth session
+    session.close()
 
 if __name__ == "__main__":
     scrape_hltv_results()
