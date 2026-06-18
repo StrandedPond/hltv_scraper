@@ -28,9 +28,6 @@ jobs:
       - name: Run Match Results Scraper
         run: python hltv_scraper/match_results/scraper.py
 
-      - name: Run Match Details Scraper
-        run: python hltv_scraper/match_results/hltv_results_scraper.py
-
       - name: Run Valve Ranking Scraper
         run: python hltv_scraper/rankings/valve_ranking_scraper.py
 
