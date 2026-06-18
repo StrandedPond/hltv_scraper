@@ -1,0 +1,44 @@
+name: Daily Scrapers
+
+on:
+  schedule: 
+    - cron: '0 22 * * *' # Every day at 6:00 AM Manila time (22:00 UTC)
+  workflow_dispatch: # Allows manual trigger from the GitHub UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' 
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f hltv_scraper/requirements.txt ]; then pip install -r hltv_scraper/requirements.txt; fi
+          # Ensure scrapling and playwright are installed
+          pip install scrapling playwright pandas
+          playwright install chromium
+
+      - name: Run Match Results Scraper
+        run: python hltv_scraper/match_results/scraper.py
+
+      - name: Run Match Details Scraper
+        run: python hltv_scraper/match_results/hltv_results_scraper.py
+
+      - name: Run Valve Ranking Scraper
+        run: python hltv_scraper/rankings/valve_ranking_scraper.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add *.csv
+          git add hltv_scraper/*.csv
+          git commit -m "Automated daily scraper update [skip ci]" || echo "No changes to commit"
+          git push

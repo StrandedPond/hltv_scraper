@@ -1,0 +1,22 @@
+# Ignore the ML/Prediction pipeline and models
+cs2_prediction/
+models/
+cs2_training_pipeline_spec.md
+
+# Ignore browser profiles
+hltv_chrome_profile/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore editor/IDE folders
+.qodo/
+.sixth/
+.vscode/
+.idea/
+
+# Ignore environment folders
+env/
+venv/
+.venv/
