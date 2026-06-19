@@ -22,8 +22,9 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f hltv_scraper/requirements.txt ]; then pip install -r hltv_scraper/requirements.txt; fi
           # Ensure scrapling and playwright are installed
-          pip install scrapling playwright pandas curl_cffi browserforge
+          pip install scrapling playwright pandas curl_cffi browserforge patchright
           playwright install chromium
+          patchright install chromium
 
       - name: Run Match Results Scraper
         run: python hltv_scraper/match_results/scraper.py

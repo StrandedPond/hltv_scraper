@@ -21,8 +21,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f hltv_scraper/requirements.txt ]; then pip install -r hltv_scraper/requirements.txt; fi
-          pip install scrapling playwright pandas curl_cffi browserforge
+          pip install scrapling playwright pandas curl_cffi browserforge patchright
           playwright install chromium
+          patchright install chromium
 
       - name: Run Team Map Stats Scraper
         run: python hltv_scraper/team_stats/hltv_team_map_stats.py

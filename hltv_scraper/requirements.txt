@@ -3,3 +3,4 @@ curl_cffi
 playwright
 pandas
 browserforge
+patchright
