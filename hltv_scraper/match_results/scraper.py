@@ -110,30 +110,29 @@ class HLTVScraper:
                 stats_url = self.base_url + stats_link
                 print(f"     -> Fetching stats: {stats_url}")
                 
-                # Use StealthySession for stats page to bypass Cloudflare
-                with StealthySession(headless=True, solve_cloudflare=True) as session:
-                    stats_page = session.fetch(stats_url)
-                    parsed_results = Parser.parse_stats_page(stats_page, match_url)
+                # Use the existing StealthySession to bypass Cloudflare
+                stats_page = self.fetcher.fetch(stats_url)
+                parsed_results = Parser.parse_stats_page(stats_page, match_url)
+                
+                for res in parsed_results:
+                    match_data = res['match_data']
+                    players_data = res['players_data']
                     
-                    for res in parsed_results:
-                        match_data = res['match_data']
-                        players_data = res['players_data']
+                    if not match_data['date']:
+                        continue
                         
-                        if not match_data['date']:
-                            continue
-                            
-                        # Check date for cutoff
-                        try:
-                            match_date = datetime.strptime(match_data['date'], "%Y-%m-%d %H:%M")
-                            if match_date < self.cutoff_date:
-                                print(f"     [STOP] Match date {match_data['date']} is older than 6 months.")
-                                self.stop_scraping = True
-                                return
-                        except ValueError:
-                            pass # Ignore malformed dates
-                            
-                        self.new_batch.append((match_data, players_data))
-                        print(f"     [SUCCESS] Processed {match_data['map']} ({match_data['team_left']} vs {match_data['team_right']})")
+                    # Check date for cutoff
+                    try:
+                        match_date = datetime.strptime(match_data['date'], "%Y-%m-%d %H:%M")
+                        if match_date < self.cutoff_date:
+                            print(f"     [STOP] Match date {match_data['date']} is older than 6 months.")
+                            self.stop_scraping = True
+                            return
+                    except ValueError:
+                        pass # Ignore malformed dates
+                        
+                    self.new_batch.append((match_data, players_data))
+                    print(f"     [SUCCESS] Processed {match_data['map']} ({match_data['team_left']} vs {match_data['team_right']})")
                         
         except Exception as e:
             print(f"     [ERROR] Failed to process {match_url}: {e}")
