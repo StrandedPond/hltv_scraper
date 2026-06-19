@@ -10,7 +10,8 @@ class HLTVScraper:
     def __init__(self):
         self.base_url = "https://www.hltv.org"
         self.start_url = "https://www.hltv.org/results?stars=1"
-        self.fetcher = Fetcher()
+        self.fetcher = StealthySession(headless=True)
+        self.fetcher.__enter__()
         self.exporter = Exporter()
         self.cutoff_date = datetime.now() - timedelta(days=183)
         self.stop_scraping = False
@@ -36,7 +37,7 @@ class HLTVScraper:
         
         while current_url and not self.stop_scraping:
             print(f"\nFetching results page: {current_url}")
-            page = self.fetcher.get(current_url)
+            page = self.fetcher.fetch(current_url)
             
             # Find all match links
             match_elements = page.css(".result-con a.a-reset")
@@ -84,7 +85,7 @@ class HLTVScraper:
     def process_match(self, match_url):
         print(f"  -> Processing match: {match_url}")
         try:
-            match_page = self.fetcher.get(match_url)
+            match_page = self.fetcher.fetch(match_url)
             stats_links = [a.attrib.get('href') for a in match_page.css("a") 
                            if a.attrib.get('href') and '/stats/matches/mapstatsid/' in a.attrib.get('href')]
             
@@ -140,4 +141,8 @@ class HLTVScraper:
 if __name__ == "__main__":
     scraper = HLTVScraper()
     scraper.start()
+    try:
+        scraper.fetcher.__exit__(None, None, None)
+    except:
+        pass
     print("\nScraping complete!")
