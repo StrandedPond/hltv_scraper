@@ -10,8 +10,6 @@ class HLTVScraper:
     def __init__(self):
         self.base_url = "https://www.hltv.org"
         self.start_url = "https://www.hltv.org/results?stars=1"
-        self.fetcher = StealthySession(headless=True)
-        self.fetcher.__enter__()
         self.exporter = Exporter()
         self.cutoff_date = datetime.now() - timedelta(days=183)
         self.stop_scraping = False
@@ -35,44 +33,46 @@ class HLTVScraper:
         print(f"Starting scraping. Cutoff date is {self.cutoff_date.strftime('%Y-%m-%d')}")
         current_url = self.start_url
         
-        while current_url and not self.stop_scraping:
-            print(f"\nFetching results page: {current_url}")
-            page = self.fetcher.fetch(current_url)
-            
-            # Find all match links
-            match_elements = page.css(".result-con a.a-reset")
-            match_links = [a.attrib.get('href') for a in match_elements if a.attrib.get('href')]
-            
-            for match_link in match_links:
+        with StealthySession(headless=True, solve_cloudflare=True) as fetcher:
+            self.fetcher = fetcher
+            while current_url and not self.stop_scraping:
+                print(f"\nFetching results page: {current_url}")
+                page = self.fetcher.fetch(current_url)
+                
+                # Find all match links
+                match_elements = page.css(".result-con a.a-reset")
+                match_links = [a.attrib.get('href') for a in match_elements if a.attrib.get('href')]
+                
+                for match_link in match_links:
+                    if self.stop_scraping:
+                        break
+                        
+                    match_url = self.base_url + match_link
+                    
+                    # --- NEW: Duplicate check to know when to stop scraping ---
+                    if match_url in self.scraped_urls:
+                        print(f"    [!] Reached already scraped match: {match_url}. Stopping scraper.")
+                        self.stop_scraping = True
+                        break
+                    # ----------------------------------------------------------
+                    
+                    self.process_match(match_url)
+                    time.sleep(2) # Sleep between matches
+                    
                 if self.stop_scraping:
+                    print("Cutoff date reached. Stopping pagination.")
                     break
                     
-                match_url = self.base_url + match_link
-                
-                # --- NEW: Duplicate check to know when to stop scraping ---
-                if match_url in self.scraped_urls:
-                    print(f"    [!] Reached already scraped match: {match_url}. Stopping scraper.")
-                    self.stop_scraping = True
-                    break
-                # ----------------------------------------------------------
-                
-                self.process_match(match_url)
-                time.sleep(2) # Sleep between matches
-                
-            if self.stop_scraping:
-                print("Cutoff date reached. Stopping pagination.")
-                break
-                
-            # Pagination
-            pagination_bottom = page.css(".pagination-component.pagination-bottom")
-            if pagination_bottom:
-                next_page_el = pagination_bottom[0].css("a.pagination-next")
-                if next_page_el and next_page_el[0].attrib.get('href'):
-                    current_url = self.base_url + next_page_el[0].attrib.get('href')
+                # Pagination
+                pagination_bottom = page.css(".pagination-component.pagination-bottom")
+                if pagination_bottom:
+                    next_page_el = pagination_bottom[0].css("a.pagination-next")
+                    if next_page_el and next_page_el[0].attrib.get('href'):
+                        current_url = self.base_url + next_page_el[0].attrib.get('href')
+                    else:
+                        current_url = None
                 else:
                     current_url = None
-            else:
-                current_url = None
 
         # Export all collected results in reverse order (chronological, oldest to newest)
         if self.new_batch:
