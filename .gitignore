@@ -20,3 +20,5 @@ __pycache__/
 env/
 venv/
 .venv/
+
+interactive_url.py

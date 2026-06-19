@@ -1,1 +1,4 @@
 scrapling
+curl_cffi
+playwright
+pandas
