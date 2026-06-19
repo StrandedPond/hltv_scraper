@@ -4,3 +4,4 @@ playwright
 pandas
 browserforge
 patchright
+msgspec
