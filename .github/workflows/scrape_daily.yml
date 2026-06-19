@@ -5,6 +5,9 @@ on:
     - cron: '0 22 * * *' # Every day at 6:00 AM Manila time (22:00 UTC)
   workflow_dispatch: # Allows manual trigger from the GitHub UI
 
+permissions:
+  contents: write
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
