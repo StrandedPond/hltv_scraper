@@ -1,3 +1,4 @@
+import os
 import csv
 import time
 from scrapling.fetchers import StealthySession
@@ -10,7 +11,6 @@ def scrape_hltv_team_maps():
     csv_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../hltv_cs2_team_map_stats.csv")
     scraped_teams = set()
     
-    import os
     if os.path.exists(csv_filename):
         print(f"Found existing file: {csv_filename}. Loading previous data...")
         with open(csv_filename, mode="r", encoding="utf-8") as f:
