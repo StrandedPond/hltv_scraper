@@ -1,7 +1,16 @@
 import os
+import sys
 import csv
 import time
 from scrapling.fetchers import StealthySession
+
+# Allow importing from sibling utils directory
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils"))
+try:
+    from utils.roster_continuity import get_changed_teams
+except ImportError:
+    def get_changed_teams():
+        return set()
 
 def scrape_hltv_team_maps():
     team_map_stats = []
@@ -10,6 +19,14 @@ def scrape_hltv_team_maps():
     all_keys = ["Team", "Map", "Timeframe", "Profile URL"]
     csv_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../hltv_cs2_team_map_stats.csv")
     scraped_teams = set()
+
+    # --- Load teams with major roster changes so they are force re-scraped ---
+    changed_teams = get_changed_teams()
+    if changed_teams:
+        print(f"\n⚠️  Roster continuity: {len(changed_teams)} team(s) flagged for force re-scrape (map stats):")
+        for t in sorted(changed_teams):
+            print(f"   • {t}")
+        print()
     
     if os.path.exists(csv_filename):
         print(f"Found existing file: {csv_filename}. Loading previous data...")
@@ -52,7 +69,17 @@ def scrape_hltv_team_maps():
 
         # 2. Iterate through each team
         for i, team in enumerate(teams):
-            print(f"[{i+1}/{len(teams)}] Processing Team: {team['name']}")
+            team_name = team['name']
+
+            # --- Skip if already scraped, UNLESS roster changed significantly ---
+            if team_name in scraped_teams:
+                if team_name.lower() in changed_teams:
+                    print(f"[{i+1}/{len(teams)}] Force re-scraping map stats: {team_name} (major roster change ⚠️ )")
+                    # Purge stale map-stats rows for this team
+                    team_map_stats[:] = [r for r in team_map_stats if r.get("Team", "").lower() != team_name.lower()]
+                else:
+                    print(f"[{i+1}/{len(teams)}] Skipping Team: {team_name} (Already scraped, roster stable)")
+                    continue
             
             try:
                 # Fetch the base team page
@@ -72,7 +99,7 @@ def scrape_hltv_team_maps():
                         break
                         
                 if not maps_link:
-                    print(f"  -> Could not find 'Maps' tab for {team['name']}. Skipping.")
+                    print(f"  -> Could not find 'Maps' tab for {team_name}. Skipping.")
                     time.sleep(2)
                     continue
                     
@@ -123,7 +150,7 @@ def scrape_hltv_team_maps():
                             stats_page = session.fetch(time_url)
                             
                             data = {
-                                "Team": team['name'],
+                                "Team": team_name,
                                 "Map": map_name,
                                 "Timeframe": time_label,
                                 "Profile URL": team['url']
@@ -162,7 +189,9 @@ def scrape_hltv_team_maps():
                             time.sleep(2)
                             
             except Exception as e:
-                print(f"Failed to scrape {team['name']}: {e}")
+                print(f"Failed to scrape {team_name}: {e}")
+
+            print(f"[{i+1}/{len(teams)}] Finished processing: {team_name}")
 
     # 9. Output to CSV
     with open(csv_filename, mode="w", newline="", encoding="utf-8") as f:

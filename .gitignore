@@ -1,24 +1,31 @@
-# Ignore the ML/Prediction pipeline and models
+# ── Prediction pipeline & trained models ──────────────────────────────────
 cs2_prediction/
 models/
 cs2_training_pipeline_spec.md
 
-# Ignore browser profiles
+# ── Browser / session artifacts ───────────────────────────────────────────
 hltv_chrome_profile/
 
-# Ignore Python cache
+# ── Python cache ──────────────────────────────────────────────────────────
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
 
-# Ignore editor/IDE folders
+# ── HTML debug dumps (match.html, etc.) ───────────────────────────────────
+*.html
+
+# ── Editor / IDE folders ──────────────────────────────────────────────────
 .qodo/
 .sixth/
 .vscode/
 .idea/
 
-# Ignore environment folders
+# ── Python environment folders ────────────────────────────────────────────
 env/
 venv/
 .venv/
 
+# ── Root-level one-off utilities (not part of the scraping pipeline) ──────
 interactive_url.py
+hltv_player_search.py
