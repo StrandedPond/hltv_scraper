@@ -1,27 +1,16 @@
-name: Weekly Scrapers — Chunk 1 of 3
-
-# Chunk 1 runs first (Monday 22:00 UTC = Tuesday 6 AM Manila).
-# Teams  0–16 of the Top 50 (17 teams) and players 0–39 are processed.
-# Roster continuity check, player leaderboard scraper, and hltv_stats
-# aggregation ONLY run in this first chunk.
-#
-# Chunks 2 and 3 run 2 h and 4 h later respectively (see scrape_weekly_2.yml
-# and scrape_weekly_3.yml) and pick up the remaining teams / players.
-# Because each scraper skips already-completed entries via the CSV skip logic,
-# running an earlier chunk a second time is harmless.
+name: Weekly Scrapers
 
 on:
   schedule:
-    - cron: '0 22 * * 1'   # Monday 22:00 UTC = Tuesday 06:00 Asia/Manila
-  workflow_dispatch:         # allow manual trigger from the Actions tab
+    - cron: '0 22 * * 1' # Every Monday at 6:00 AM Manila time (22:00 UTC)
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  scrape-chunk-1:
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 330     # 5.5 h safety limit (well under GitHub's 6 h cap)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,33 +28,25 @@ jobs:
           playwright install chromium
           patchright install chromium
 
-      # ── Roster continuity (only in chunk 1) ─────────────────────────────────
-      - name: Run Roster Continuity Check
-        run: python hltv_scraper/utils/roster_continuity.py
+      - name: Run Team Map Stats Scraper
+        run: python hltv_scraper/team_stats/hltv_team_map_stats.py
 
-      # ── Team stats — teams 0–16 (17 teams) ──────────────────────────────────
-      - name: Run Team Map Stats Scraper (chunk 1/3)
-        run: python hltv_scraper/team_stats/hltv_team_map_stats.py --offset 0 --limit 17
+      - name: Run Top 50 Teams Scraper
+        run: python hltv_scraper/team_stats/hltv_top50_team.py
 
-      - name: Run Top 50 Teams Scraper (chunk 1/3)
-        run: python hltv_scraper/team_stats/hltv_top50_team.py --offset 0 --limit 17
-
-      # ── Player leaderboard + aggregation (only in chunk 1) ──────────────────
       - name: Run Player Stats Scraper
         run: python hltv_scraper/player_stats/hltv_scraper.py
 
       - name: Run Player Data Aggregation
         run: python hltv_scraper/player_stats/hltv_stats.py
 
-      # ── Detailed player profiles — players 0–39 ──────────────────────────────
-      - name: Run Detailed Players Scraper (chunk 1/3)
-        run: python hltv_scraper/player_stats/detailed_players_scraper.py --offset 0 --limit 40
+      - name: Run Detailed Players Scraper
+        run: python hltv_scraper/player_stats/detailed_players_scraper.py
 
-      # ── Persist results ──────────────────────────────────────────────────────
       - name: Commit and Push changes
         run: |
           git config user.name "StrandedPond"
           git config user.email "30177985+StrandedPond@users.noreply.github.com"
-          git add *.csv *.json hltv_rosters.csv
-          git commit -m "Weekly scrape — chunk 1/3 [skip ci]" || echo "No changes to commit"
+          git add *.csv *.json
+          git commit -m "Automated weekly scraper update [skip ci]" || echo "No changes to commit"
           git push

@@ -1,14 +1,10 @@
 import csv
 import os
 import time
-import argparse
 import tempfile
 from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
-import sys
-_PARENT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-sys.path.insert(0, _PARENT)
-from utils.hltv_session import make_session, safe_fetch, jitter_sleep
+from scrapling.fetchers import StealthySession
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -340,9 +336,7 @@ def scrape_player(session, target_url: str, team_fallback: str = "no_team") -> N
 
         # Only one fetch per timeframe now!
         time_url = make_absolute(data_link)
-        tf_page  = safe_fetch(session, time_url)
-        if tf_page is None:
-            continue
+        tf_page  = session.fetch(time_url)
         s_tf     = parse_stats(tf_page)
 
         tf_data[f"kpr_{tf}"]           = s_tf.get("kpr")
@@ -353,12 +347,12 @@ def scrape_player(session, target_url: str, team_fallback: str = "no_team") -> N
         
         # Pull the CT/T split explicitly
         tf_data[f"kpr_ct_{tf}"]        = s_tf.get("ct_kpr")
-        tf_data[f"adr_ct_{tf}"]         = s_tf.get("ct_adr")
-        tf_data[f"kpr_t_{tf}"]          = s_tf.get("t_kpr")
-        tf_data[f"adr_t_{tf}"]          = s_tf.get("t_adr")
+        tf_data[f"adr_ct_{tf}"]        = s_tf.get("ct_adr")
+        tf_data[f"kpr_t_{tf}"]         = s_tf.get("t_kpr")
+        tf_data[f"adr_t_{tf}"]         = s_tf.get("t_adr")
 
         print(f"  -> {tf} | KPR: {s_tf.get('kpr')} (CT: {s_tf.get('ct_kpr')} / T: {s_tf.get('t_kpr')})")
-        jitter_sleep(1.5)
+        time.sleep(1.5)
 
     # ── Per-map stats ─────────────────────────────────────────────────────
     map_elements = player_page.css(".stats-sub-navigation-simple-filter-map-hover .stats-sub-map-grid .stats-sub-map a")
@@ -414,17 +408,17 @@ def scrape_player(session, target_url: str, team_fallback: str = "no_team") -> N
 # Interactive entry point
 # ---------------------------------------------------------------------------
 
-def main(offset: int = 0, limit: int | None = None) -> None:
+def main() -> None:
     json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../player_urls.json")
     if not os.path.exists(json_path):
         print(f"Cannot find {json_path}")
         return
-
+        
     import json
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-
+            
         queue = []
         for player_name, url in data.items():
             url = url.strip()
@@ -433,40 +427,28 @@ def main(offset: int = 0, limit: int | None = None) -> None:
                     print(f"Skipping invalid URL for {player_name}: {url}")
                 else:
                     queue.append((url, "no_team"))
-
+                    
         if not queue:
             print("No URLs found filled out in player_urls.json.")
             return
-
+            
     except Exception as e:
         print(f"Error reading file: {e}")
         return
 
-    # Apply chunk slice
-    chunk = queue[offset : (offset + limit) if limit is not None else None]
-    print(f"\nQueue: {len(queue)} total players. Processing [{offset}:{offset + len(chunk)}] ({len(chunk)} players).")
+    print(f"\nQueue: {len(queue)} player(s) to scrape.")
+    
+    with StealthySession(headless=True, solve_cloudflare=True) as session:
+        print("Initializing scraper - bypassing Cloudflare...")
+        session.fetch(BASE_URL)
 
-    if not chunk:
-        print("No players in this chunk. Done.")
-        return
-
-    with make_session() as session:
-        print("Initializing scraper …")
-
-        for i, (target_url, team_fallback) in enumerate(chunk, 1):
+        for i, (target_url, team_fallback) in enumerate(queue, 1):
             try:
                 scrape_player(session, target_url, team_fallback)
             except Exception as exc:
                 print(f"  Scraping failed: {exc}")
 
-        print(f"\nChunk complete — {len(chunk)} player(s) processed.")
-
+        print(f"\nQueue complete -- {len(queue)} player(s) processed.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="HLTV Detailed Players Scraper")
-    parser.add_argument("--offset", type=int, default=0,
-                        help="Index of first player in player_urls.json to process (default: 0)")
-    parser.add_argument("--limit",  type=int, default=None,
-                        help="Max players to process (default: all)")
-    args = parser.parse_args()
-    main(offset=args.offset, limit=args.limit)
+    main()

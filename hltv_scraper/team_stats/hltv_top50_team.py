@@ -1,16 +1,7 @@
 import os
-import sys
 import csv
 import time
 from scrapling.fetchers import StealthySession
-
-# Allow importing from sibling utils directory
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils"))
-try:
-    from utils.roster_continuity import get_changed_teams
-except ImportError:
-    def get_changed_teams():
-        return set()
 
 def scrape_hltv_teams():
     team_stats = []
@@ -20,14 +11,6 @@ def scrape_hltv_teams():
     all_keys = ["Team", "Timeframe", "Profile URL"]
     csv_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../hltv_cs2_all_teams.csv")
     scraped_teams = set()
-
-    # --- Load teams with major roster changes so they are force re-scraped ---
-    changed_teams = get_changed_teams()
-    if changed_teams:
-        print(f"\n⚠️  Roster continuity: {len(changed_teams)} team(s) flagged for force re-scrape:")
-        for t in sorted(changed_teams):
-            print(f"   • {t}")
-        print()
 
     # --- NEW: Check if file exists and load existing data ---
     if os.path.exists(csv_filename):
@@ -79,15 +62,10 @@ def scrape_hltv_teams():
         for i, team in enumerate(teams):
             team_name = team['name']
             
-            # --- Skip if already scraped, UNLESS roster changed significantly ---
+            # --- NEW: Skip team if already in the CSV ---
             if team_name in scraped_teams:
-                if team_name.lower() in changed_teams:
-                    print(f"[{i+1}/{len(teams)}] Force re-scraping: {team_name} (major roster change detected ⚠️ )")
-                    # Remove stale rows for this team so we write fresh data
-                    team_stats[:] = [r for r in team_stats if r.get("Team", "").lower() != team_name.lower()]
-                else:
-                    print(f"[{i+1}/{len(teams)}] Skipping Team: {team_name} (Already scraped, roster stable)")
-                    continue
+                print(f"[{i+1}/{len(teams)}] Skipping Team: {team_name} (Already scraped)")
+                continue
             # --------------------------------------------
             
             print(f"[{i+1}/{len(teams)}] Processing Team: {team_name}")

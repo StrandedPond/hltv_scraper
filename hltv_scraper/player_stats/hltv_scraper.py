@@ -1,10 +1,6 @@
 import json
 import time
-import os
-import sys
-_PARENT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-sys.path.insert(0, _PARENT)
-from utils.hltv_session import make_session, safe_fetch, jitter_sleep
+from scrapling.fetchers import StealthySession
 
 def parse_stats(page):
     """Helper function to extract stats from the page layout."""
@@ -67,13 +63,10 @@ def scrape_hltv_players_maps():
                 pass
         print(f"Loaded {len(scraped_players)} previously scraped players (Note: we will update them).\n")
     
-    with make_session() as session:
-        print("Navigating to HLTV CS2 players page …")
-
-        page = safe_fetch(session, "https://www.hltv.org/stats/players?csVersion=CS2&startDate=all", jitter=False)
-        if page is None:
-            print("ERROR: Could not load player leaderboard. Aborting.")
-            return
+    with StealthySession(headless=True, solve_cloudflare=True) as session:
+        print("Navigating to HLTV CS2 players page and bypassing Cloudflare...")
+        
+        page = session.fetch("https://www.hltv.org/stats/players?csVersion=CS2&startDate=all")
         hrefs = page.css("table.stats-table.player-ratings-table td.playerCol a::attr(href)").getall()
         full_hrefs = [base_url + href if href.startswith('/') else href for href in hrefs]
         
@@ -82,10 +75,7 @@ def scrape_hltv_players_maps():
         # Use [:2] here if you want to test it quickly before running the full list
         for i, link in enumerate(full_hrefs):
             try:
-                player_page = safe_fetch(session, link)
-                if player_page is None:
-                    print(f"[{i+1}/{len(full_hrefs)}] Skipping (fetch failed): {link}")
-                    continue
+                player_page = session.fetch(link)
                 
                 # Extract Player Name
                 player_name = player_page.css(".player-summary-stat-box-left-nickname.text-ellipsis::text").get()
@@ -112,37 +102,34 @@ def scrape_hltv_players_maps():
                     time_url = base_url + data_link if data_link.startswith('/') else data_link
                     
                     if option_text == "last month":
-                        tf_page = safe_fetch(session, time_url)
-                        if tf_page is None: continue
+                        tf_page = session.fetch(time_url)
                         stats = parse_stats(tf_page)
                         overall_stats.update({
-                            "kpr_1m": stats.get('kpr'), "hs_rate_1m": stats.get('hs_rate'),
-                            "adr_1m": stats.get('adr'), "rounds_played_1m": stats.get('rounds_played'),
+                            "kpr_1m": stats.get('kpr'), "hs_rate_1m": stats.get('hs_rate'), 
+                            "adr_1m": stats.get('adr'), "rounds_played_1m": stats.get('rounds_played'), 
                             "kast_1m": stats.get('kast')
                         })
-                        jitter_sleep(1)
-
+                        time.sleep(1)
+                    
                     elif option_text == "last 3 months":
-                        tf_page = safe_fetch(session, time_url)
-                        if tf_page is None: continue
+                        tf_page = session.fetch(time_url)
                         stats = parse_stats(tf_page)
                         overall_stats.update({
-                            "kpr_3m": stats.get('kpr'), "hs_rate_3m": stats.get('hs_rate'),
-                            "adr_3m": stats.get('adr'), "rounds_played_3m": stats.get('rounds_played'),
+                            "kpr_3m": stats.get('kpr'), "hs_rate_3m": stats.get('hs_rate'), 
+                            "adr_3m": stats.get('adr'), "rounds_played_3m": stats.get('rounds_played'), 
                             "kast_3m": stats.get('kast')
                         })
-                        jitter_sleep(1)
-
+                        time.sleep(1)
+                        
                     elif option_text == "last 6 months":
-                        tf_page = safe_fetch(session, time_url)
-                        if tf_page is None: continue
+                        tf_page = session.fetch(time_url)
                         stats = parse_stats(tf_page)
                         overall_stats.update({
-                            "kpr_6m": stats.get('kpr'), "hs_rate_6m": stats.get('hs_rate'),
-                            "adr_6m": stats.get('adr'), "rounds_played_6m": stats.get('rounds_played'),
+                            "kpr_6m": stats.get('kpr'), "hs_rate_6m": stats.get('hs_rate'), 
+                            "adr_6m": stats.get('adr'), "rounds_played_6m": stats.get('rounds_played'), 
                             "kast_6m": stats.get('kast')
                         })
-                        jitter_sleep(1)
+                        time.sleep(1)
 
                 # --- PART 2: PER MAP STATS ---
                 map_elements = player_page.css(".stats-sub-navigation-simple-filter-map-hover a:not(.stats-sub-map-grid)")
@@ -154,9 +141,7 @@ def scrape_hltv_players_maps():
                         continue
                         
                     map_url = base_url + map_href if map_href.startswith('/') else map_href
-                    map_page = safe_fetch(session, map_url)
-                    if map_page is None:
-                        continue
+                    map_page = session.fetch(map_url)
                     map_stats = parse_stats(map_page)
                     
                     # Construct the final flattened JSON object for this Player + Map
@@ -197,7 +182,7 @@ def scrape_hltv_players_maps():
                     
                     all_data.append(row_data)
                     print(f"  -> Scraped Map: {map_name}")
-                    jitter_sleep(2)
+                    time.sleep(2) # Prevent IP Bans
                         
             except Exception as e:
                 print(f"Failed to scrape {link}: {e}")
