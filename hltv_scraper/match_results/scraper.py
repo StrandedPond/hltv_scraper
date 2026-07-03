@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 _PARENT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, os.path.join(_PARENT, "utils"))
 
-from hltv_session import make_session, safe_fetch, jitter_sleep
+from utils.hltv_session import make_session, safe_fetch, jitter_sleep
 from parser import Parser
 from exporters import Exporter
 
