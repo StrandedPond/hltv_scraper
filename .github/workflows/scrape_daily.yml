@@ -29,6 +29,10 @@ jobs:
           playwright install chromium
           patchright install chromium
 
+      - name: Run Match Results Scraper
+        working-directory: hltv_scraper/match_results
+        run: python scraper.py
+
       - name: Run Valve Ranking Scraper
         run: python hltv_scraper/rankings/valve_ranking_scraper.py
 
@@ -36,7 +40,7 @@ jobs:
         run: |
           git config user.name "StrandedPond"
           git config user.email "30177985+StrandedPond@users.noreply.github.com"
-          git add *.csv hltv_scraper/*.csv
+          git add *.csv hltv_scraper/*.csv hltv_scraper/matches.csv hltv_scraper/player_stats.csv
           git commit -m "Automated daily scraper update [skip ci]" || echo "No changes to commit"
           git push
 
